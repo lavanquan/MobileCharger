@@ -1,0 +1,2 @@
+node_pos,energy,commRange,prob,charge_pos,chargeRange,velocity,base,ER,ET,EFS,EMP,b,b_energy,THRESHOLD,delta,alpha,beta,MaxTime
+"(10,10),(30,30),(50,50),(70,70),(90,90),(10,30),(30,10),(30,50),(50,30),(50,70)",20,40,"3, 3, 4, 4, 4, 2, 2, 3, 2, 2","(10, 50), (90, 50)",50,10,"(80,80)",0.0000001,0.00000005,1E-11,1.3E-14,160,160,0.5,100,50,10,20000
