@@ -8,8 +8,8 @@ from EnergyEstimator.Models.Abstract_Model import AbstractModel
 class lstm(AbstractModel):
 
     def __init__(self, saving_path, input_shape, hidden, drop_out,
-                 alg_name=None, tag=None, early_stopping=False, check_point=False):
-        super(AbstractModel, self).__init__(alg_name=alg_name, tag=tag, early_stopping=early_stopping,
+                 early_stopping=False, check_point=False):
+        super(AbstractModel, self).__init__(early_stopping=early_stopping,
                                             check_point=check_point,
                                             saving_path=saving_path)
 

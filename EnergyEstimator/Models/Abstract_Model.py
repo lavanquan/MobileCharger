@@ -6,24 +6,22 @@ from keras.callbacks import EarlyStopping, ModelCheckpoint
 from keras.models import model_from_json
 
 
-def plot_training_history(alg_name, tag, saving_path, model_history):
+def plot_training_history(saving_path, model_history):
     plt.plot(model_history.history['loss'], label='mse')
     plt.plot(model_history.history['val_loss'], label='val_mse')
-    plt.savefig(saving_path + '[MSE]{}-{}.png'.format(alg_name, tag))
+    plt.savefig(saving_path + '[MSE]loss-val_loss.png')
     plt.legend()
     plt.close()
 
     plt.plot(model_history.history['val_loss'], label='val_mae')
     plt.legend()
-    plt.savefig(saving_path + '[val_loss]{}-{}.png'.format(alg_name, tag))
+    plt.savefig(saving_path + '[MSE]val_loss.png')
     plt.close()
 
 
 class AbstractModel(object):
 
-    def __init__(self, saving_path, alg_name=None, tag=None, early_stopping=False, check_point=False, **kwargs):
-        self.alg_name = alg_name
-        self.tag = tag
+    def __init__(self, saving_path, early_stopping=False, check_point=False, **kwargs):
         self.saving_path = os.path.expanduser(saving_path)
         if not os.path.exists(self.saving_path):
             os.makedirs(self.saving_path)
@@ -116,7 +114,5 @@ class AbstractModel(object):
             return -1
 
     def plot_training_history(self, model_history):
-        plot_training_history(alg_name=self.alg_name,
-                              tag=self.tag,
-                              saving_path=self.saving_path,
+        plot_training_history(saving_path=self.saving_path,
                               model_history=model_history)
