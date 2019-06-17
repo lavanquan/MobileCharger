@@ -15,14 +15,11 @@ def data_splitting(data, split_ratio):
     return data[:train_size], data[train_size:train_size + valid_size], data[-(train_size + valid_size):]
 
 
-def data_normalization(train_set, valid_set, test_set):
-    mm = MinMaxScaler(copy=True)
-    mm.fit(train_set)
-    train_data_normalized = mm.transform(train_set)
-    valid_data_normalized = mm.transform(valid_set)
-    test_data_normalized = mm.transform(test_set)
+def data_normalization(train_set):
+    scaler = MinMaxScaler(copy=True)
+    scaler.fit(train_set)
 
-    return train_data_normalized, valid_data_normalized, test_data_normalized, mm
+    return scaler
 
 
 def data_preprocessing(raw_data):

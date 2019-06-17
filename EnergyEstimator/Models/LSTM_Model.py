@@ -18,7 +18,7 @@ class lstm(AbstractModel):
         self.drop_out = drop_out
         self.model = None
 
-    def normal_model_contruction(self):
+    def construct_n_to_one_model(self):
         """
         Construct RNN model from the beginning
         :param input_shape:
@@ -28,7 +28,7 @@ class lstm(AbstractModel):
         self.model = Sequential()
         self.model.add(LSTM(self.hidden, input_shape=self.input_shape))
         self.model.add(Dropout(self.drop_out))
-        self.model.add(Dense(1))
+        self.model.add(Dense(1, name='output'))
 
     def seq2seq_model_construction(self):
         """

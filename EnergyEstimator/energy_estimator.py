@@ -11,7 +11,7 @@ def build_network():
                     hidden=Config.HIDDEN_UNIT,
                     drop_out=Config.DROP_OUT,
                     check_point=True)
-    lstm_net.seq2seq_model_construction()
+    lstm_net.construct_n_to_one_model()
     lstm_net.plot_models()
 
     print lstm_net.model.summary()
@@ -60,22 +60,67 @@ def train(train_set, valid_set):
     return lstm_net
 
 
-def test():
-    pass
+def predict_energy_consumption(model, raw_data, scaler):
+    n_series = raw_data.shape[1]
+
+    assert raw_data.shape[0] == Config.N_TIMESTEPS * Config.AVG_STEPS
+
+    data = data_preprocessing(raw_data)
+    data_n = scaler.transform(data)
+
+    data_n = data_n.T
+
+    input = np.expand_dims(data_n, axis=2)
+
+    pred = model.predict(input)
+
+    pred = np.reshape(pred, newshape=(1, n_series))
+
+    pred = scaler.inverse_transform(pred)
+
+    return pred
+
+
+def test(raw_test_set, scaler):
+    lstm_net = build_network()
+    if file_exist(lstm_net.saving_path + 'checkpoints/{weights-{:02d}.hdf5}'.format(Config.BEST_CHECKPOINT)):
+        lstm_net.load_model_from_check_point(_from_epoch=Config.BEST_CHECKPOINT)
+    else:
+        raise RuntimeError('Model not found!')
+
+    n_nodes = raw_test_set.shape[1]
+
+    n_time_steps = int(raw_test_set.shape[0] / Config.AVG_STEPS)
+    n_tests = n_time_steps - Config.N_TIMESTEPS
+
+    test_set = data_preprocessing(raw_test_set)
+
+    y_true = np.zeros((n_tests, n_nodes))
+    y_pred = np.zeros((n_tests, n_nodes))
+
+    for i in range(n_tests):
+        raw_input = raw_test_set[i * Config.AVG_STEPS * Config.N_TIMESTEPS:
+                                 i * Config.AVG_STEPS * Config.N_TIMESTEPS + Config.AVG_STEPS * Config.N_TIMESTEPS]
+        pred = predict_energy_consumption(model=lstm_net.model, raw_data=raw_input, scaler=scaler)
+
+        y_pred[i] = pred
+        y_true[i] = test_set[i + n_tests]
 
 
 if __name__ == '__main__':
-
-    if file_exist(Config.DATA_PATH + 'data.npy'):
-        data = np.load(Config.DATA_PATH + 'data.npy')
-    else:
-        raw_data = np.genfromtxt(Config.RAW_DATA_PATH + 'log_file_noCharge.csv', skip_header=1, delimiter=',')
-        print (raw_data.shape)
-        data = data_preprocessing(raw_data)
+    raw_data = np.genfromtxt(Config.RAW_DATA_PATH + 'log_file_noCharge.csv', skip_header=1, delimiter=',')
 
     splitting_ratio = (0.6, 0.2, 0.2)
-    train_set, valid_set, test_set = data_splitting(data=data, split_ratio=splitting_ratio)
+    raw_train_set, raw_valid_set, raw_test_set = data_splitting(data=raw_data, split_ratio=splitting_ratio)
 
-    n_train_set, n_valid_set, n_test_set, scaler = data_normalization(train_set, valid_set, test_set)
+    train_set = data_preprocessing(raw_train_set)
+    valid_set = data_preprocessing(raw_valid_set)
+
+    scaler = data_normalization(train_set)
+
+    n_train_set = scaler.transform(train_set)
+    n_valid_set = scaler.transform(valid_set)
 
     train(n_train_set, n_valid_set)
+
+    test(raw_test_set, scaler)
