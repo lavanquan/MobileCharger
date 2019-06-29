@@ -2,12 +2,14 @@ import numpy as np
 
 import common.configuration as Config
 from Models.LSTM_Model import lstm
-from common.utils import data_splitting, data_normalization, data_preprocessing, create_xy_set, file_exist
+from common.utils import data_normalization, data_preprocessing, create_xy_set, file_exist
+import pandas as pd
 
+from xgboost import XGBRegressor
 
 def build_network():
     lstm_net = lstm(saving_path=Config.MODEL_SAVING_PATH,
-                    input_shape=(Config.N_FEATURES, Config.N_FEATURES),
+                    input_shape=(Config.N_TIMESTEPS, Config.N_FEATURES),
                     hidden=Config.HIDDEN_UNIT,
                     drop_out=Config.DROP_OUT,
                     check_point=True)
@@ -24,7 +26,7 @@ def train(train_set, valid_set):
 
     lstm_net = build_network()
 
-    if file_exist(lstm_net.saving_path + 'checkpoints/{weights-{:02d}.hdf5}'.format(Config.BEST_CHECKPOINT)):
+    if file_exist(lstm_net.saving_path + 'checkpoints/weights-{:02d}.hdf5'.format(Config.BEST_CHECKPOINT)):
         lstm_net.load_model_from_check_point(_from_epoch=Config.BEST_CHECKPOINT)
     else:
         train_x, train_y = create_xy_set(train_set)
@@ -108,19 +110,25 @@ def test(raw_test_set, scaler):
 
 
 if __name__ == '__main__':
-    raw_data = np.genfromtxt(Config.RAW_DATA_PATH + 'log_file_noCharge.csv', skip_header=1, delimiter=',')
 
-    splitting_ratio = (0.6, 0.2, 0.2)
-    raw_train_set, raw_valid_set, raw_test_set = data_splitting(data=raw_data, split_ratio=splitting_ratio)
+    raw_data = pd.read_csv(Config.RAW_DATA_PATH + 'log_file_noCharge_random.csv')
+    data = data_preprocessing(raw_data=raw_data.values)
 
-    train_set = data_preprocessing(raw_train_set)
-    valid_set = data_preprocessing(raw_valid_set)
+    train_set = data[:int(data.shape[0]*0.8)]
+    test_set = data[int(data.shape[0]*0.8):]
 
-    scaler = data_normalization(train_set)
+    train_x, train_y = create_xy_set(train_set)
+    test_x, test_y = create_xy_set(test_set)
 
-    n_train_set = scaler.transform(train_set)
-    n_valid_set = scaler.transform(valid_set)
+    train_x = train_x.squeeze(axis=2)
+    # train_y.squeeze(axis=1)
+    test_x = test_x.squeeze(axis=2)
+    # test_y.squeeze(axis=1)
 
-    train(n_train_set, n_valid_set)
+    model = XGBRegressor(n_jobs=4)
+    from sklearn.model_selection import cross_validate
 
-    test(raw_test_set, scaler)
+    cv_results = cross_validate(model, X=train_x, y=train_y, n_jobs=4,)
+
+    print cv_results.keys()
+

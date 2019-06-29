@@ -66,6 +66,7 @@ class lstm():
         self.model.add(LSTM(self.hidden, input_shape=self.input_shape))
         self.model.add(Dropout(self.drop_out))
         self.model.add(Dense(1, name='output'))
+        self.model.compile(loss='mse', optimizer='adam', metrics=['mse', 'mae'])
 
     def seq2seq_model_construction(self):
         """
