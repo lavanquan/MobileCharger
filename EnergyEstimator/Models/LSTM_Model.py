@@ -8,6 +8,8 @@ from keras.models import Sequential
 from keras.models import model_from_json
 from keras.utils import plot_model
 
+import pandas as pd
+
 
 def plot_training_history(saving_path, model_history):
     plt.plot(model_history.history['loss'], label='mse')
@@ -193,3 +195,17 @@ class lstm():
     def plot_training_history(self, model_history):
         plot_training_history(saving_path=self.saving_path,
                               model_history=model_history)
+
+        import numpy as np
+        import pandas as pd
+
+        loss = np.array(model_history.history['loss'])
+        val_loss = np.array(model_history.history['val_loss'])
+        dump_model_history = pd.DataFrame(index=range(loss.size),
+                                          columns=['epoch', 'loss', 'val_loss'])
+
+        dump_model_history['epoch'] = range(loss.size)
+        dump_model_history['loss'] = loss
+        dump_model_history['val_loss'] = val_loss
+
+        dump_model_history.to_csv(self.saving_path + 'training_history.csv', index=False)
