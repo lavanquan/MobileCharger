@@ -1,3 +1,4 @@
+import matplotlib
 import numpy as np
 import pandas as pd
 from xgboost import XGBRegressor
@@ -5,6 +6,9 @@ from xgboost import XGBRegressor
 import common.configuration as Config
 from Models.LSTM_Model import lstm
 from common.utils import data_preprocessing, create_xy_set, file_exist
+
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 
 
 def build_network():
@@ -133,10 +137,6 @@ if __name__ == '__main__':
 
     print cv_results.keys()
 
-    import matplotlib
-
-    matplotlib.use('Agg')
-    import matplotlib.pyplot as plt
 
     plt.plot(cv_results['train_neg_mean_absolute_error'], label='train_mae')
     plt.plot(cv_results['test_neg_mean_absolute_error'], label='test_mae')
