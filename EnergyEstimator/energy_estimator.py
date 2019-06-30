@@ -129,10 +129,13 @@ if __name__ == '__main__':
     from sklearn.model_selection import cross_validate
 
     cv_results = cross_validate(model, X=train_x, y=train_y, n_jobs=4,
-                                scoring=("neg_mean_absolute_error", "neg_mean_squared_error"))
+                                scoring=("neg_mean_absolute_error", "neg_mean_squared_error"), return_train_score=True)
 
     print cv_results.keys()
 
+    import matplotlib
+
+    matplotlib.use('TkAgg')
     import matplotlib.pyplot as plt
 
     plt.plot(cv_results['train_neg_mean_absolute_error'], label='train_mae')
