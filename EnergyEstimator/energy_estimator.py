@@ -1,4 +1,8 @@
 import matplotlib
+
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+
 import numpy as np
 import pandas as pd
 from xgboost import XGBRegressor
@@ -7,8 +11,6 @@ import common.configuration as Config
 from Models.LSTM_Model import lstm
 from common.utils import data_preprocessing, create_xy_set, file_exist
 
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
 
 
 def build_network():
