@@ -1,11 +1,11 @@
 import numpy as np
+import pandas as pd
+from xgboost import XGBRegressor
 
 import common.configuration as Config
 from Models.LSTM_Model import lstm
-from common.utils import data_normalization, data_preprocessing, create_xy_set, file_exist
-import pandas as pd
+from common.utils import data_preprocessing, create_xy_set, file_exist
 
-from xgboost import XGBRegressor
 
 def build_network():
     lstm_net = lstm(saving_path=Config.MODEL_SAVING_PATH,
@@ -128,7 +128,14 @@ if __name__ == '__main__':
     model = XGBRegressor(n_jobs=4)
     from sklearn.model_selection import cross_validate
 
-    cv_results = cross_validate(model, X=train_x, y=train_y, n_jobs=4,)
+    cv_results = cross_validate(model, X=train_x, y=train_y, n_jobs=4,
+                                scoring=("neg_mean_absolute_error", "neg_mean_squared_error"))
 
     print cv_results.keys()
 
+    import matplotlib.pyplot as plt
+
+    plt.plot(cv_results['train_neg_mean_absolute_error'], label='train_mae')
+    plt.plot(cv_results['test_neg_mean_absolute_error'], label='test_mae')
+    plt.legend()
+    plt.savefig('CV_plot.png')
