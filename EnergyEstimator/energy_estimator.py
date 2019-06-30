@@ -15,7 +15,8 @@ from sklearn.metrics import mean_absolute_error, r2_score
 
 def build_network():
     print '|--- Build lstm model.'
-    lstm_net = lstm(saving_path=Config.MODEL_SAVING_PATH,
+    lstm_net = lstm(saving_path=Config.MODEL_SAVING_PATH + 'step-{}-hidden-{}/'.format(Config.N_TIMESTEPS,
+                                                                                       Config.HIDDEN_UNIT),
                     input_shape=(Config.N_TIMESTEPS, Config.N_FEATURES),
                     hidden=Config.HIDDEN_UNIT,
                     drop_out=Config.DROP_OUT,
