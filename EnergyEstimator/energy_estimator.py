@@ -135,7 +135,7 @@ if __name__ == '__main__':
 
     import matplotlib
 
-    matplotlib.use('TkAgg')
+    matplotlib.use('Agg')
     import matplotlib.pyplot as plt
 
     plt.plot(cv_results['train_neg_mean_absolute_error'], label='train_mae')
