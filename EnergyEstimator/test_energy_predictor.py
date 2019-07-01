@@ -1,4 +1,5 @@
 import pandas as pd
+from sklearn.model_selection import KFold
 
 import common.configuration as Config
 from EnergyEstimator import EnergyEstimator
