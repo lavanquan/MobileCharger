@@ -145,6 +145,7 @@ def lstm_train(train_set):
 
 
 def lstm_test(test_set):
+    print '|--- Test lstm:'
     test_x, test_y = create_xy_set(test_set)
 
     lstm_net = build_network()
