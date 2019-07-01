@@ -11,10 +11,12 @@ from Models.LSTM_Model import lstm
 from common.utils import data_preprocessing, create_xy_set, file_exist
 from xgboost import XGBRegressor
 from sklearn.metrics import mean_absolute_error, r2_score
+from sklearn.model_selection import train_test_split
 
 
 def build_network():
-    lstm_net = lstm(saving_path=Config.MODEL_SAVING_PATH,
+    lstm_net = lstm(saving_path=Config.MODEL_SAVING_PATH + 'step-{}-hidden-{}/'.format(Config.N_TIMESTEPS,
+                                                                                       Config.HIDDEN_UNIT),
                     input_shape=(Config.N_TIMESTEPS, Config.N_FEATURES),
                     hidden=Config.HIDDEN_UNIT,
                     drop_out=Config.DROP_OUT,
@@ -135,8 +137,6 @@ def test(raw_test_set, scaler):
 def lstm_train(train_set):
     data_x, data_y = create_xy_set(train_set)
 
-    from sklearn.model_selection import train_test_split
-
     train_x, valid_x, train_y, valid_y = train_test_split(data_x, data_y, test_size=0.2, shuffle=True)
 
     model = train((train_x, train_y, valid_x, valid_y))
@@ -144,8 +144,15 @@ def lstm_train(train_set):
     return model
 
 
-def lstm_test(test_set, lstm_net):
+def lstm_test(test_set):
     test_x, test_y = create_xy_set(test_set)
+
+    lstm_net = build_network()
+    if file_exist(lstm_net.saving_path + 'checkpoints/{weights-{:02d}.hdf5}'.format(Config.BEST_CHECKPOINT)):
+        lstm_net.load_model_from_check_point(_from_epoch=Config.BEST_CHECKPOINT)
+    else:
+        raise RuntimeError('Model not found!')
+
 
     pred = lstm_net.model.predict(test_x)
 
@@ -163,4 +170,5 @@ if __name__ == '__main__':
     test_set = data[int(data.shape[0] * 0.8):]
 
     # xgb_test(train_set)
-    lstm_model = lstm_train(train_set)
+    # lstm_net = lstm_train(train_set)
+    lstm_test(test_set)
