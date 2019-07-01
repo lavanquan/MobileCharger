@@ -176,8 +176,6 @@ class EnergyEstimator(object):
         mae = mean_absolute_error(y_pred=pred, y_true=test_y)
         r2 = r2_score(y_true=test_y, y_pred=pred)
 
-        print "Results: MAE: {} --- R2: {}".format(mae, r2)
-
         return mae, r2
 
     def __xgb_train(self, train_data):
