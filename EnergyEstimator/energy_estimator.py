@@ -47,7 +47,7 @@ def xgb_test(data):
     plt.close()
 
 
-def train(train_set, valid_set):
+def train(train_data):
     print ('|--- Train average energy consumption predictor')
 
     lstm_net = build_network()
@@ -55,30 +55,27 @@ def train(train_set, valid_set):
     if file_exist(lstm_net.saving_path + 'checkpoints/weights-{:02d}.hdf5'.format(Config.BEST_CHECKPOINT)):
         lstm_net.load_model_from_check_point(_from_epoch=Config.BEST_CHECKPOINT)
     else:
-        train_x, train_y = create_xy_set(train_set)
-        valid_x, valid_y = create_xy_set(valid_set)
-
         from_epoch = lstm_net.load_model_from_check_point()
         if from_epoch > 0:
             print('|--- Continue training forward model from epoch %i --- ' % from_epoch)
-            training_fw_history = lstm_net.model.fit(x=train_x,
-                                                     y=train_y,
+            training_fw_history = lstm_net.model.fit(x=train_data[0],
+                                                     y=train_data[1],
                                                      batch_size=Config.BATCH_SIZE,
                                                      epochs=Config.N_EPOCH,
                                                      callbacks=lstm_net.callbacks_list,
-                                                     validation_data=(valid_x, valid_y),
+                                                     validation_data=(train_data[2], train_data[3]),
                                                      shuffle=True,
                                                      initial_epoch=from_epoch,
                                                      verbose=2)
         else:
             print('|--- Training new forward model.')
 
-            training_fw_history = lstm_net.model.fit(x=train_x,
-                                                     y=train_y,
+            training_fw_history = lstm_net.model.fit(x=train_data[0],
+                                                     y=train_data[1],
                                                      batch_size=Config.BATCH_SIZE,
                                                      epochs=Config.N_EPOCH,
                                                      callbacks=lstm_net.callbacks_list,
-                                                     validation_data=(valid_x, valid_y),
+                                                     validation_data=(train_data[2], train_data[3]),
                                                      shuffle=True,
                                                      verbose=2)
         # Plot the training history
@@ -156,6 +153,7 @@ def lstm_test(test_set, lstm_net):
     r2 = r2_score(y_true=test_y, y_pred=pred)
 
     print "Results: MAE: {} --- R2: {}".format(mae, r2)
+
 
 if __name__ == '__main__':
     raw_data = pd.read_csv(Config.RAW_DATA_PATH + 'log_file_noCharge_random.csv')
