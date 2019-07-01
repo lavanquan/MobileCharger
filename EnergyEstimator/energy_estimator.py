@@ -4,7 +4,6 @@ matplotlib.use('Agg')
 
 import numpy as np
 import pandas as pd
-from xgboost import XGBRegressor
 
 import common.configuration as Config
 from Models.LSTM_Model import lstm
@@ -129,8 +128,3 @@ if __name__ == '__main__':
     test_x = test_x.squeeze(axis=2)
     # test_y.squeeze(axis=1)
 
-    model = XGBRegressor(n_jobs=4)
-    from sklearn.model_selection import cross_validate
-
-    cv_results = cross_validate(model, X=train_x, y=train_y, n_jobs=4,
-                                scoring=("neg_mean_absolute_error", "neg_mean_squared_error"), return_train_score=True)
