@@ -153,7 +153,6 @@ def lstm_test(test_set):
     else:
         raise RuntimeError('Model not found!')
 
-
     pred = lstm_net.model.predict(test_x)
 
     mae = mean_absolute_error(y_pred=pred, y_true=test_y)
