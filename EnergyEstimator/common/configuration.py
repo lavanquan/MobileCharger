@@ -3,7 +3,7 @@ MODEL_SAVING_PATH = 'trained_models/'
 
 N_FOLD = 10
 AVG_STEPS = 3
-ENERGY_SEND_PERIOD = 5.0  # Time (in second)
+ENERGY_SEND_PERIOD = 100.0  # Time (in second)
 
 # LSTM Configurations
 N_TIMESTEPS = 20  # Number of data used as input

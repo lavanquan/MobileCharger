@@ -13,7 +13,7 @@ def data_normalization(data):
     return scaler
 
 
-def data_preprocessing(raw_data, data_period=5):
+def data_preprocessing(raw_data, data_period=100.0):
     data = np.zeros(shape=(raw_data.shape[0] - 1, raw_data.shape[1]))
 
     for i in range(raw_data.shape[0] - 1):
