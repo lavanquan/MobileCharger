@@ -148,7 +148,7 @@ def lstm_test(test_set):
     test_x, test_y = create_xy_set(test_set)
 
     lstm_net = build_network()
-    if file_exist(lstm_net.saving_path + 'checkpoints/{weights-{:02d}.hdf5}'.format(Config.BEST_CHECKPOINT)):
+    if file_exist(lstm_net.saving_path + 'checkpoints/weights-{:02d}.hdf5'.format(Config.BEST_CHECKPOINT)):
         lstm_net.load_model_from_check_point(_from_epoch=Config.BEST_CHECKPOINT)
     else:
         raise RuntimeError('Model not found!')
