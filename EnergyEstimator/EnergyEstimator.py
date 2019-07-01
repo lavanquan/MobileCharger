@@ -7,7 +7,7 @@ import numpy as np
 
 import common.configuration as Config
 from Models.LSTM_Model import lstm
-from common.utils import data_preprocessing, create_xy_set, file_exist
+from common.utils import data_preprocessing, create_xy_set
 from xgboost import XGBRegressor
 from sklearn.metrics import mean_absolute_error, r2_score
 from sklearn.model_selection import train_test_split
@@ -79,16 +79,16 @@ class EnergyEstimator(object):
         :param data: ndarray - Observed energy of sensors. Shape = (#time-step, #nodes)
         :return:
         """
-        if self.__model is None:
-            if not os.path.isfile(self.model_saving_path + 'lstm/best_model.hdf5'):
-                raise RuntimeError('Model needs to be trained first')
-            else:
-                self.__model = self.__build_network()
-                self.__model.load_trained_model(self.__model.saving_path, 'best_model.hdf5')
 
         if self.predictor == 'xgb':
             return self.__xgb_test(data)
         else:
+            if not os.path.isfile(self.model_saving_path + 'lstm/best_model.hdf5'):
+                raise RuntimeError('LSTM-based model needs to be trained first!')
+            else:
+                self.__model = self.__build_network()
+                self.__model.load_trained_model(self.__model.saving_path, 'best_model.hdf5')
+
             return self.__lstm_test(data)
 
     def __xgb_predict(self, data):
@@ -169,11 +169,6 @@ class EnergyEstimator(object):
     def __lstm_test(self, test_set):
         print '|--- Test lstm:'
         test_x, test_y = create_xy_set(test_set)
-
-        if file_exist(self.__model.saving_path + 'checkpoints/weights-{:02d}.hdf5'.format(Config.BEST_CHECKPOINT)):
-            self.__model.load_model_from_check_point(_from_epoch=Config.BEST_CHECKPOINT)
-        else:
-            raise RuntimeError('Model not found!')
 
         pred = self.__model.model.predict(test_x)
 
