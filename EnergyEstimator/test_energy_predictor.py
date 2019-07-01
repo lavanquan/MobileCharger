@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import KFold
@@ -25,6 +27,10 @@ _mae, _r2 = [], []
 k = 0
 for train_idx, test_idx in kf.split(raw_data):
     train_data, test_data = raw_data[train_idx], raw_data[test_idx]
+
+    if not os.path.exists(Config.MODEL_SAVING_PATH + 'lstm-cv-{}/'.format(k)):
+        os.makedirs(Config.MODEL_SAVING_PATH + 'lstm-cv-{}/'.format(k))
+
     lstm_predictor = EnergyEstimator(predictor='lstm', n_timestep=Config.N_TIMESTEPS,
                                      data_period=Config.ENERGY_SEND_PERIOD,
                                      model_saving_path=Config.MODEL_SAVING_PATH + 'lstm-cv-{}/'.format(k))
