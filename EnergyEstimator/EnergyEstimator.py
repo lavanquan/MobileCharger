@@ -12,48 +12,105 @@ from xgboost import XGBRegressor
 from sklearn.metrics import mean_absolute_error, r2_score
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import cross_validate
-
+import os
 
 class EnergyEstimator(object):
-    def __init__(self, predictor='lstm'):
+    """Implement of Energy predictor. Currently supported models are LSTM and XGBoost.
+
+        Parameters
+        ----------
+        predictor: str
+            The name of the based model. Default: "lstm"
+        n_timestep: int
+            The number of data fed to the model. Default: 20
+        data_period: float
+            The sampling period. Default: 5.0 second
+    """
+
+    def __init__(self, predictor='lstm', n_timestep=20, data_period=5.0, model_saving_path='./trained_models/'):
+        assert predictor == 'lstm' or predictor == 'xgb'
         self.predictor = predictor
-        if self.predictor != 'lstm' or self.predictor != 'xgb':
-            raise NotImplementedError('Predictor {} is not implemented'.format(predictor))
+
+        assert n_timestep > 0
+        self.n_timestep = n_timestep
+
+        assert data_period > 0.0
+        self.data_period = data_period
+
+        assert os.path.isdir(model_saving_path)
+        self.model_saving_path = model_saving_path
 
         self.__model = None
 
     def fit(self, data):
         """
         Training energy predictor.
-        :param data: (ndarray) The logged energy of sensor node shape = (#time-step, #nodes)
+        :param data: (ndarray) The logged energy of sensor nodes. Shape = (#time-step, #nodes)
         :return:
         """
-        data = data_preprocessing(raw_data=data)
+        data = data_preprocessing(raw_data=data, data_period=self.data_period)
 
-        if self.predictor == 'lstm':
+        if self.predictor == 'xgb':
             self.__model = self.__xgb_train(data)
         else:
             self.__model = self.__lstm_train(data)
 
     def predict(self, data):
-        if self.__model is None:
-            raise RuntimeError('Model needs to be trained first')
+        """
+        Predicting sensors' average energy consumption
+        :param data: ndarray - Observed energy of sensors. Shape = (#time-step, #nodes)
+        :return: Predicted value of energy consumption.
+        """
 
-        if self.predictor == 'lstm':
+        if self.__model is None:
+            if not os.path.isfile(self.model_saving_path + 'lstm/best_model.hdf5'):
+                raise RuntimeError('Model needs to be trained first')
+            else:
+                self.__model = self.__build_network()
+                self.__model.load_trained_model(self.__model.saving_path, 'best_model.hdf5')
+        if self.predictor == 'xgb':
             return self.__xgb_predict(data)
         else:
             return self.__lstm_predict(data)
 
+    def test(self, data):
+        """
+        Only for model testing.
+        :param data: ndarray - Observed energy of sensors. Shape = (#time-step, #nodes)
+        :return:
+        """
+        if self.__model is None:
+            if not os.path.isfile(self.model_saving_path + 'lstm/best_model.hdf5'):
+                raise RuntimeError('Model needs to be trained first')
+            else:
+                self.__model = self.__build_network()
+                self.__model.load_trained_model(self.__model.saving_path, 'best_model.hdf5')
+
+        if self.predictor == 'xgb':
+            return self.__xgb_test(data)
+        else:
+            return self.__lstm_test(data)
+
     def __xgb_predict(self, data):
-        pass
+        raise NotImplementedError('XGB_predict currently is not implemented!')
+
+    def __prepare_lstm_input(self, data):
+        input = np.zeros(shape=(data.shape[1], self.n_timestep, 1))
+
+        input[:, :, 0] = data.T[:, -self.n_timestep:]
+        return input
 
     def __lstm_predict(self, data):
-        pass
+        assert data.shape[0] >= self.n_timestep
+        __lstm_input = self.__prepare_lstm_input(data)
+
+        pred = self.__model.model.predict(__lstm_input)
+        pred = pred.squeeze(axis=1)
+        return pred
 
     def __build_network(self):
-        lstm_net = lstm(saving_path=Config.MODEL_SAVING_PATH + 'lstm-step-{}-hidden-{}/'.format(Config.N_TIMESTEPS,
-                                                                                                Config.HIDDEN_UNIT),
-                        input_shape=(Config.N_TIMESTEPS, Config.N_FEATURES),
+        lstm_net = lstm(saving_path=self.model_saving_path + 'lstm/',
+                        input_shape=(self.n_timestep, 1),
                         hidden=Config.HIDDEN_UNIT,
                         drop_out=Config.DROP_OUT,
                         check_point=True)
@@ -69,9 +126,7 @@ class EnergyEstimator(object):
 
         train_x = train_x.squeeze(axis=2)
 
-        model = XGBRegressor(n_jobs=4)
-
-        cv_results = cross_validate(model, X=train_x, y=train_y, n_jobs=4, cv=10,
+        cv_results = cross_validate(self.__model, X=train_x, y=train_y, n_jobs=4, cv=10,
                                     scoring=("neg_mean_absolute_error", "neg_mean_squared_error"),
                                     return_train_score=True)
 
@@ -88,82 +143,19 @@ class EnergyEstimator(object):
 
         lstm_net = self.__build_network()
 
-        if file_exist(lstm_net.saving_path + 'checkpoints/weights-{:02d}.hdf5'.format(Config.BEST_CHECKPOINT)):
-            lstm_net.load_model_from_check_point(_from_epoch=Config.BEST_CHECKPOINT)
-        else:
-            from_epoch = lstm_net.load_model_from_check_point()
-            if from_epoch > 0:
-                print('|--- Continue training forward model from epoch %i --- ' % from_epoch)
-                training_fw_history = lstm_net.model.fit(x=train_data[0],
-                                                         y=train_data[1],
-                                                         batch_size=Config.BATCH_SIZE,
-                                                         epochs=Config.N_EPOCH,
-                                                         callbacks=lstm_net.callbacks_list,
-                                                         validation_data=(train_data[2], train_data[3]),
-                                                         shuffle=True,
-                                                         initial_epoch=from_epoch,
-                                                         verbose=2)
-            else:
-                print('|--- Training new forward model.')
-
-                training_fw_history = lstm_net.model.fit(x=train_data[0],
-                                                         y=train_data[1],
-                                                         batch_size=Config.BATCH_SIZE,
-                                                         epochs=Config.N_EPOCH,
-                                                         callbacks=lstm_net.callbacks_list,
-                                                         validation_data=(train_data[2], train_data[3]),
-                                                         shuffle=True,
-                                                         verbose=2)
-            # Plot the training history
-            if training_fw_history is not None:
-                lstm_net.plot_training_history(training_fw_history)
+        training_fw_history = lstm_net.model.fit(x=train_data[0],
+                                                 y=train_data[1],
+                                                 batch_size=Config.BATCH_SIZE,
+                                                 epochs=Config.N_EPOCH,
+                                                 callbacks=lstm_net.callbacks_list,
+                                                 validation_data=(train_data[2], train_data[3]),
+                                                 shuffle=True,
+                                                 verbose=2)
+        # Plot the training history
+        if training_fw_history is not None:
+            lstm_net.plot_training_history(training_fw_history)
 
         return lstm_net
-
-    def __predict_energy_consumption(self, model, raw_data, scaler):
-        n_series = raw_data.shape[1]
-
-        assert raw_data.shape[0] == Config.N_TIMESTEPS * Config.AVG_STEPS
-
-        data = data_preprocessing(raw_data)
-        data_n = scaler.transform(data)
-
-        data_n = data_n.T
-
-        input = np.expand_dims(data_n, axis=2)
-
-        pred = model.predict(input)
-
-        pred = np.reshape(pred, newshape=(1, n_series))
-
-        pred = scaler.inverse_transform(pred)
-
-        return pred
-
-    def __test(self, raw_test_set, scaler):
-        lstm_net = self.__build_network()
-        if file_exist(lstm_net.saving_path + 'checkpoints/{weights-{:02d}.hdf5}'.format(Config.BEST_CHECKPOINT)):
-            lstm_net.load_model_from_check_point(_from_epoch=Config.BEST_CHECKPOINT)
-        else:
-            raise RuntimeError('Model not found!')
-
-        n_nodes = raw_test_set.shape[1]
-
-        n_time_steps = int(raw_test_set.shape[0] / Config.AVG_STEPS)
-        n_tests = n_time_steps - Config.N_TIMESTEPS
-
-        test_set = data_preprocessing(raw_test_set)
-
-        y_true = np.zeros((n_tests, n_nodes))
-        y_pred = np.zeros((n_tests, n_nodes))
-
-        for i in range(n_tests):
-            raw_input = raw_test_set[i * Config.AVG_STEPS * Config.N_TIMESTEPS:
-                                     i * Config.AVG_STEPS * Config.N_TIMESTEPS + Config.AVG_STEPS * Config.N_TIMESTEPS]
-            pred = self.__predict_energy_consumption(model=lstm_net.model, raw_data=raw_input, scaler=scaler)
-
-            y_pred[i] = pred
-            y_true[i] = test_set[i + n_tests]
 
     def __lstm_train(self, train_set):
         data_x, data_y = create_xy_set(train_set)
@@ -178,18 +170,19 @@ class EnergyEstimator(object):
         print '|--- Test lstm:'
         test_x, test_y = create_xy_set(test_set)
 
-        lstm_net = self.__build_network()
-        if file_exist(lstm_net.saving_path + 'checkpoints/weights-{:02d}.hdf5'.format(Config.BEST_CHECKPOINT)):
-            lstm_net.load_model_from_check_point(_from_epoch=Config.BEST_CHECKPOINT)
+        if file_exist(self.__model.saving_path + 'checkpoints/weights-{:02d}.hdf5'.format(Config.BEST_CHECKPOINT)):
+            self.__model.load_model_from_check_point(_from_epoch=Config.BEST_CHECKPOINT)
         else:
             raise RuntimeError('Model not found!')
 
-        pred = lstm_net.model.predict(test_x)
+        pred = self.__model.model.predict(test_x)
 
         mae = mean_absolute_error(y_pred=pred, y_true=test_y)
         r2 = r2_score(y_true=test_y, y_pred=pred)
 
         print "Results: MAE: {} --- R2: {}".format(mae, r2)
+
+        return mae, r2
 
     def __xgb_train(self, train_data):
         train_x, train_y = create_xy_set(train_data)

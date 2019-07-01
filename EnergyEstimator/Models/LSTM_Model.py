@@ -1,4 +1,3 @@
-import fnmatch
 import os
 
 import matplotlib.pyplot as plt
@@ -7,8 +6,6 @@ from keras.layers import LSTM, Dense, Dropout, Bidirectional, TimeDistributed
 from keras.models import Sequential
 from keras.models import model_from_json
 from keras.utils import plot_model
-
-import pandas as pd
 
 
 def plot_training_history(saving_path, model_history):
@@ -40,17 +37,16 @@ class lstm():
 
         self.callbacks_list = []
 
-        self.checkpoints_path = self.saving_path + 'checkpoints/'
+        self.checkpoints_path = self.saving_path
 
         if check_point:
             if not os.path.isdir(self.checkpoints_path):
                 os.makedirs(self.checkpoints_path)
             self.checkpoints = ModelCheckpoint(
-                self.checkpoints_path + "weights-{epoch:02d}.hdf5",
-                monitor='val_loss', verbose=1,
-                save_best_only=False,
-                save_weights_only=True,
-                mode='auto', period=1)
+                self.checkpoints_path + "best_model.hdf5",
+                monitor='val_loss',
+                verbose=1,
+                save_best_only=True)
             self.callbacks_list = [self.checkpoints]
         if early_stopping:
             self.earlystop = EarlyStopping(monitor='val_loss', min_delta=0.0001, patience=50,
@@ -151,46 +147,7 @@ class lstm():
 
     def load_trained_model(self, path, weight_file):
 
-        if not os.path.isfile(path + weight_file):
-            print('   --> [RNN-load_weights_model] --- File %s not found ---' % (path + weight_file))
-            return False
-        else:
-            print('   --> [RNN-load_weights_model] --- Load weights from ' + path + weight_file)
-            self.model.load_weights(path + weight_file)
-            return True
-
-    def load_model_from_check_point(self, _from_epoch=None):
-
-        if os.path.exists(self.checkpoints_path):
-            list_files = fnmatch.filter(os.listdir(self.checkpoints_path), '*.hdf5')
-
-            if len(list_files) == 0:
-                print(
-                        '|--- Found no weights file at %s---' % self.checkpoints_path)
-                return -1
-
-            list_files = sorted(list_files, key=lambda x: int(x.split('.')[0].split('-')[1]))
-
-            weights_file_name = ''
-            epoch = -1
-            if _from_epoch:
-                for _weights_file_name in list_files:
-                    epoch = int(_weights_file_name.split('.')[0].split('-')[1])
-                    if _from_epoch == epoch:
-                        weights_file_name = _weights_file_name
-                        break
-            else:
-                # Get the last check point
-                weights_file_name = list_files[-1]
-                epoch = int(weights_file_name.split('.')[0].split('-')[1])
-
-            if self.load_trained_model(path=self.checkpoints_path, weight_file=weights_file_name):
-                return epoch
-            else:
-                return -1
-        else:
-            print('----> [RNN-load_model_from_check_point] --- Models saving path dose not exist')
-            return -1
+        self.model.load_weights(path + weight_file)
 
     def plot_training_history(self, model_history):
         plot_training_history(saving_path=self.saving_path,

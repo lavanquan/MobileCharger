@@ -13,17 +13,12 @@ def data_normalization(data):
     return scaler
 
 
-def data_preprocessing(raw_data):
-    data_size = int(raw_data.shape[0] / Config.AVG_STEPS)
+def data_preprocessing(raw_data, data_period=5):
+    data = np.zeros(shape=(raw_data.shape[0] - 1, raw_data.shape[1]))
 
-    data = np.zeros(shape=(data_size, raw_data.shape[1]))
-
-    for i in range(data_size):
-        avg_energy_consuming = (raw_data[i * Config.AVG_STEPS] - raw_data[
-            i * Config.AVG_STEPS + Config.AVG_STEPS]) / Config.ENERGY_SEND_PERIOD
+    for i in range(raw_data.shape[0] - 1):
+        avg_energy_consuming = (raw_data[i] - raw_data[i + 1]) / data_period
         data[i] = avg_energy_consuming
-
-    np.save(Config.DATA_PATH + 'data', data)
 
     return data
 
