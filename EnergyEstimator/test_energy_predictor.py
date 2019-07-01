@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 from sklearn.model_selection import KFold
 
@@ -7,6 +8,10 @@ from EnergyEstimator import EnergyEstimator
 raw_data = pd.read_csv(Config.DATA_PATH + 'log_file_noCharge_random.csv')
 
 raw_data = raw_data.values
+
+deleted_rows = [x for x in range(1, raw_data.shape[0], 2)]
+
+raw_data = np.delete(raw_data, deleted_rows, axis=0)
 
 # Cross-validation test
 
