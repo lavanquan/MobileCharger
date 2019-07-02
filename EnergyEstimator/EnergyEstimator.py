@@ -2,17 +2,20 @@ import matplotlib
 
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-
+import pandas as pd
 import numpy as np
 
 import common.configuration as Config
-from Models.LSTM_Model import lstm
 from common.utils import data_preprocessing, create_xy_set
 from xgboost import XGBRegressor
 from sklearn.metrics import mean_absolute_error, r2_score
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import cross_validate
 import os
+
+from keras.callbacks import ModelCheckpoint
+from keras.models import Sequential
+from keras.layers import Dense, LSTM, Dropout
 
 
 class EnergyEstimator(object):
@@ -41,7 +44,7 @@ class EnergyEstimator(object):
         assert os.path.isdir(model_saving_path)
         self.model_saving_path = model_saving_path
 
-        self.__model = None
+        self.model = None
 
     def fit(self, data):
         """
@@ -52,9 +55,9 @@ class EnergyEstimator(object):
         data = data_preprocessing(raw_data=data, data_period=self.data_period)
 
         if self.predictor == 'xgb':
-            self.__model = self.__xgb_train(data)
+            self.model = self.__xgb_train(data)
         else:
-            self.__model = self.__lstm_train(data)
+            self.__lstm_train(data)
 
     def predict(self, data):
         """
@@ -63,12 +66,12 @@ class EnergyEstimator(object):
         :return: Predicted value of energy consumption.
         """
 
-        if self.__model is None:
+        if self.model is None:
             if not os.path.isfile(self.model_saving_path + 'lstm/best_model.hdf5'):
                 raise RuntimeError('Model needs to be trained first')
             else:
-                self.__model = self.__build_network()
-                self.__model.load_trained_model(self.__model.saving_path, 'best_model.hdf5')
+                self.__build_network()
+                self.model.load_weights(self.model_saving_path, 'best_model.hdf5')
         if self.predictor == 'xgb':
             return self.__xgb_predict(data)
         else:
@@ -87,10 +90,9 @@ class EnergyEstimator(object):
             if not os.path.isfile(self.model_saving_path + 'lstm/best_model.hdf5'):
                 raise RuntimeError('LSTM-based model needs to be trained first!')
             else:
-                print '|--- Build LSTM model'
-                self.__model = self.__build_network()
+                self.__build_network()
                 print '|--- Load trained model'
-                self.__model.load_trained_model(self.__model.saving_path, 'best_model.hdf5')
+                self.model.load_weights(self.model_saving_path, 'best_model.hdf5')
 
             return self.__lstm_test(data)
 
@@ -107,29 +109,24 @@ class EnergyEstimator(object):
         assert data.shape[0] >= self.n_timestep
         __lstm_input = self.__prepare_lstm_input(data)
 
-        pred = self.__model.model.predict(__lstm_input)
+        pred = self.model.predict(__lstm_input)
         pred = pred.squeeze(axis=1)
         return pred
 
     def __build_network(self):
-        lstm_net = lstm(saving_path=self.model_saving_path + 'lstm/',
-                        input_shape=(self.n_timestep, 1),
-                        hidden=Config.HIDDEN_UNIT,
-                        drop_out=Config.DROP_OUT,
-                        check_point=True)
-        lstm_net.construct_n_to_one_model()
-        lstm_net.plot_models()
-
-        print lstm_net.model.summary()
-
-        return lstm_net
+        self.model = Sequential()
+        self.model.add(LSTM(64, input_shape=(Config.N_TIMESTEPS, 1)))
+        self.model.add(Dropout(Config.DROP_OUT))
+        self.model.add(Dense(32))
+        self.model.add(Dense(1, name='output'))
+        self.model.compile(loss='mae', optimizer='adam', metrics=['mse', 'mae'])
 
     def __xgb_test(self, data):
         train_x, train_y = create_xy_set(data)
 
         train_x = train_x.squeeze(axis=2)
 
-        cv_results = cross_validate(self.__model, X=train_x, y=train_y, n_jobs=4, cv=10,
+        cv_results = cross_validate(self.model, X=train_x, y=train_y, n_jobs=4, cv=10,
                                     scoring=("neg_mean_absolute_error", "neg_mean_squared_error"),
                                     return_train_score=True)
 
@@ -144,36 +141,59 @@ class EnergyEstimator(object):
     def __train(self, train_data):
         print ('|--- Train average energy consumption predictor')
 
-        lstm_net = self.__build_network()
+        self.__build_network()
 
-        training_fw_history = lstm_net.model.fit(x=train_data[0],
-                                                 y=train_data[1],
-                                                 batch_size=Config.BATCH_SIZE,
-                                                 epochs=Config.N_EPOCH,
-                                                 callbacks=lstm_net.callbacks_list,
-                                                 validation_data=(train_data[2], train_data[3]),
-                                                 shuffle=True,
-                                                 verbose=2)
+        checkpoints = ModelCheckpoint(
+            self.model_saving_path + "best_model.hdf5",
+            monitor='val_loss',
+            verbose=1,
+            save_best_only=True)
+
+        training_fw_history = self.model.fit(x=train_data[0],
+                                             y=train_data[1],
+                                             batch_size=Config.BATCH_SIZE,
+                                             epochs=Config.N_EPOCH,
+                                             callbacks=[checkpoints],
+                                             validation_data=(train_data[2], train_data[3]),
+                                             shuffle=True,
+                                             verbose=2)
         # Plot the training history
         if training_fw_history is not None:
-            lstm_net.plot_training_history(training_fw_history)
+            self.__plot_training_history(training_fw_history)
 
-        return lstm_net
+    def __plot_training_history(self, model_history):
+        plt.plot(model_history.history['loss'], label='mse')
+        plt.plot(model_history.history['val_loss'], label='val_mse')
+        plt.savefig(self.model_saving_path + '[MSE]loss-val_loss.png')
+        plt.legend()
+        plt.close()
+
+        plt.plot(model_history.history['val_loss'], label='val_mae')
+        plt.legend()
+        plt.savefig(self.model_saving_path + '[MSE]val_loss.png')
+        plt.close()
+
+        loss = np.array(model_history.history['loss'])
+        val_loss = np.array(model_history.history['val_loss'])
+        dump_model_history = pd.DataFrame(index=range(loss.size),
+                                          columns=['epoch', 'loss', 'val_loss'])
+
+        dump_model_history['epoch'] = range(loss.size)
+        dump_model_history['loss'] = loss
+        dump_model_history['val_loss'] = val_loss
+
+        dump_model_history.to_csv(self.model_saving_path + 'training_history.csv', index=False)
 
     def __lstm_train(self, train_set):
         data_x, data_y = create_xy_set(train_set)
 
-        train_x, valid_x, train_y, valid_y = train_test_split(data_x, data_y, test_size=0.2, shuffle=True)
+        X_train, X_test, y_train, y_test = train_test_split(data_x, data_y, test_size=0.2, shuffle=True)
 
-        model = self.__train((train_x, train_y, valid_x, valid_y))
-
-        return model
+        self.__train((X_train, y_train, X_test, y_test))
 
     def __lstm_test(self, test_set):
         print '|--- Test lstm:'
-        test_x, test_y = create_xy_set(test_set)
-
-        X_test, X_valid, y_test, y_valid = train_test_split(test_x, test_y, test_size=0.05, shuffle=True)
+        X_test, y_test = create_xy_set(test_set)
 
         pred = self.__model.model.predict(X_test)
 
