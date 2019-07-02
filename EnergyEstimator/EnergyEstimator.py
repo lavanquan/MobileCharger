@@ -18,7 +18,6 @@ import common.configuration as Config
 from common.utils import data_preprocessing, create_xy_set
 
 
-
 class EnergyEstimator(object):
     """Implement of Energy predictor. Currently supported models are LSTM and XGBoost.
 
@@ -68,7 +67,7 @@ class EnergyEstimator(object):
         """
 
         if self.model is None:
-            if not os.path.isfile(self.model_saving_path + 'lstm/best_model.hdf5'):
+            if not os.path.isfile(self.model_saving_path + 'best_model.hdf5'):
                 raise RuntimeError('Model needs to be trained first')
             else:
                 self.__build_lstm_network()
@@ -88,7 +87,7 @@ class EnergyEstimator(object):
         if self.predictor == 'xgb':
             return self.__xgb_test(data)
         else:
-            if not os.path.isfile(self.model_saving_path + 'lstm/best_model.hdf5'):
+            if not os.path.isfile(self.model_saving_path + 'best_model.hdf5'):
                 raise RuntimeError('LSTM-based model needs to be trained first!')
             else:
                 self.__build_lstm_network()
