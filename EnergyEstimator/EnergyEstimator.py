@@ -87,8 +87,9 @@ class EnergyEstimator(object):
             if not os.path.isfile(self.model_saving_path + 'lstm/best_model.hdf5'):
                 raise RuntimeError('LSTM-based model needs to be trained first!')
             else:
-                print '|--- Build and load trained LSTM model'
+                print '|--- Build LSTM model'
                 self.__model = self.__build_network()
+                print '|--- Load trained model'
                 self.__model.load_trained_model(self.__model.saving_path, 'best_model.hdf5')
 
             return self.__lstm_test(data)
