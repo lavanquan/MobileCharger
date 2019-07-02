@@ -1,21 +1,21 @@
-import matplotlib
+import os
 
-matplotlib.use('Agg')
+import matplotlib
 import matplotlib.pyplot as plt
-import pandas as pd
 import numpy as np
+import pandas as pd
+from keras.callbacks import ModelCheckpoint
+from keras.layers import Dense, LSTM, Dropout
+from keras.models import Sequential
+from sklearn.metrics import mean_absolute_error, r2_score
+from sklearn.model_selection import cross_validate
+from sklearn.model_selection import train_test_split
+from xgboost import XGBRegressor
 
 import common.configuration as Config
 from common.utils import data_preprocessing, create_xy_set
-from xgboost import XGBRegressor
-from sklearn.metrics import mean_absolute_error, r2_score
-from sklearn.model_selection import train_test_split
-from sklearn.model_selection import cross_validate
-import os
 
-from keras.callbacks import ModelCheckpoint
-from keras.models import Sequential
-from keras.layers import Dense, LSTM, Dropout
+matplotlib.use('Agg')
 
 
 class EnergyEstimator(object):
