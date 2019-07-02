@@ -70,7 +70,7 @@ class EnergyEstimator(object):
             if not os.path.isfile(self.model_saving_path + 'lstm/best_model.hdf5'):
                 raise RuntimeError('Model needs to be trained first')
             else:
-                self.__build_network()
+                self.__build_lstm_network()
                 self.model.load_weights(self.model_saving_path, 'best_model.hdf5')
         if self.predictor == 'xgb':
             return self.__xgb_predict(data)
@@ -90,7 +90,7 @@ class EnergyEstimator(object):
             if not os.path.isfile(self.model_saving_path + 'lstm/best_model.hdf5'):
                 raise RuntimeError('LSTM-based model needs to be trained first!')
             else:
-                self.__build_network()
+                self.__build_lstm_network()
                 print '|--- Load trained model'
                 self.model.load_weights(self.model_saving_path, 'best_model.hdf5')
 
@@ -113,7 +113,7 @@ class EnergyEstimator(object):
         pred = pred.squeeze(axis=1)
         return pred
 
-    def __build_network(self):
+    def __build_lstm_network(self):
         self.model = Sequential()
         self.model.add(LSTM(64, input_shape=(Config.N_TIMESTEPS, 1)))
         self.model.add(Dropout(Config.DROP_OUT))
@@ -141,7 +141,7 @@ class EnergyEstimator(object):
     def __train(self, train_data):
         print ('|--- Train average energy consumption predictor')
 
-        self.__build_network()
+        self.__build_lstm_network()
 
         checkpoints = ModelCheckpoint(
             self.model_saving_path + "best_model.hdf5",
@@ -149,17 +149,17 @@ class EnergyEstimator(object):
             verbose=1,
             save_best_only=True)
 
-        training_fw_history = self.model.fit(x=train_data[0],
-                                             y=train_data[1],
-                                             batch_size=Config.BATCH_SIZE,
-                                             epochs=Config.N_EPOCH,
-                                             callbacks=[checkpoints],
-                                             validation_data=(train_data[2], train_data[3]),
-                                             shuffle=True,
-                                             verbose=2)
+        _training_fw_history = self.model.fit(x=train_data[0],
+                                              y=train_data[1],
+                                              batch_size=Config.BATCH_SIZE,
+                                              epochs=Config.N_EPOCH,
+                                              callbacks=[checkpoints],
+                                              validation_data=(train_data[2], train_data[3]),
+                                              shuffle=True,
+                                              verbose=2)
         # Plot the training history
-        if training_fw_history is not None:
-            self.__plot_training_history(training_fw_history)
+        if _training_fw_history is not None:
+            self.__plot_training_history(_training_fw_history)
 
     def __plot_training_history(self, model_history):
         plt.plot(model_history.history['loss'], label='mse')
@@ -195,7 +195,7 @@ class EnergyEstimator(object):
         print '|--- Test lstm:'
         X_test, y_test = create_xy_set(test_set)
 
-        pred = self.__model.model.predict(X_test)
+        pred = self.model.predict(X_test)
 
         mae = mean_absolute_error(y_pred=pred, y_true=y_test)
         r2 = r2_score(y_true=y_test, y_pred=pred)
