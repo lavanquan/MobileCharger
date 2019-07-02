@@ -1,10 +1,9 @@
-import os
-
 import matplotlib
 import matplotlib.pyplot as plt
 
 matplotlib.use('Agg')
 
+import os
 import numpy as np
 import pandas as pd
 from keras.callbacks import ModelCheckpoint
