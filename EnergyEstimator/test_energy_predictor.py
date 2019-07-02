@@ -11,9 +11,9 @@ raw_data = pd.read_csv(Config.DATA_PATH + 'log_file_noCharge_random.csv')
 
 raw_data = raw_data.values
 
-# deleted_rows = [x for x in range(1, raw_data.shape[0], 2)]
+deleted_rows = [x for x in range(1, raw_data.shape[0], 2)]
 
-# raw_data = np.delete(raw_data, deleted_rows, axis=0)
+raw_data = np.delete(raw_data, deleted_rows, axis=0)
 
 # Cross-validation test
 
@@ -32,7 +32,7 @@ for train_idx, test_idx in kf.split(raw_data):
         os.makedirs(Config.MODEL_SAVING_PATH + 'lstm-cv-{}/'.format(k))
 
     lstm_predictor = EnergyEstimator(predictor='lstm', n_timestep=Config.N_TIMESTEPS,
-                                     data_period=Config.ENERGY_SEND_PERIOD,
+                                     data_period=Config.ENERGY_SEND_PERIOD * 2,
                                      model_saving_path=Config.MODEL_SAVING_PATH + 'lstm-cv-{}/'.format(k))
 
     lstm_predictor.fit(train_data)
@@ -41,6 +41,7 @@ for train_idx, test_idx in kf.split(raw_data):
     _mae.append(mae)
     _r2.append(r2)
 
+    print "MAE: {} ---- R2: {}".format(_mae, _r2)
     k += 1
 
 cv_results['mae'] = _mae

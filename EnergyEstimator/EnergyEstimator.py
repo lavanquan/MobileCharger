@@ -14,6 +14,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.model_selection import cross_validate
 import os
 
+
 class EnergyEstimator(object):
     """Implement of Energy predictor. Currently supported models are LSTM and XGBoost.
 
