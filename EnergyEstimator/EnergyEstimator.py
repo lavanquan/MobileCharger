@@ -2,6 +2,9 @@ import os
 
 import matplotlib
 import matplotlib.pyplot as plt
+
+matplotlib.use('Agg')
+
 import numpy as np
 import pandas as pd
 from keras.callbacks import ModelCheckpoint
@@ -15,7 +18,6 @@ from xgboost import XGBRegressor
 import common.configuration as Config
 from common.utils import data_preprocessing, create_xy_set
 
-matplotlib.use('Agg')
 
 
 class EnergyEstimator(object):
