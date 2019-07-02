@@ -172,10 +172,12 @@ class EnergyEstimator(object):
         print '|--- Test lstm:'
         test_x, test_y = create_xy_set(test_set)
 
-        pred = self.__model.model.predict(test_x)
+        X_test, X_valid, y_test, y_valid = train_test_split(test_x, test_y, test_size=0.05, shuffle=True)
 
-        mae = mean_absolute_error(y_pred=pred, y_true=test_y)
-        r2 = r2_score(y_true=test_y, y_pred=pred)
+        pred = self.__model.model.predict(X_test)
+
+        mae = mean_absolute_error(y_pred=pred, y_true=y_test)
+        r2 = r2_score(y_true=y_test, y_pred=pred)
 
         return mae, r2
 

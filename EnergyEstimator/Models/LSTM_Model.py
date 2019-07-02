@@ -2,7 +2,7 @@ import os
 
 import matplotlib.pyplot as plt
 from keras.callbacks import EarlyStopping, ModelCheckpoint
-from keras.layers import LSTM, Dense, Dropout, Bidirectional, TimeDistributed
+from keras.layers import LSTM, Dense, Dropout, TimeDistributed
 from keras.models import Sequential
 from keras.models import model_from_json
 from keras.utils import plot_model
@@ -82,41 +82,6 @@ class lstm():
         self.model.add(TimeDistributed(Dense(1)))
 
         self.model.compile(loss='mse', optimizer='adam', metrics=['mse', 'mae'])
-
-    def seq2seq_deep_model_construction(self, n_layers):
-        self.model = Sequential()
-        for layer in range(n_layers):
-
-            if layer != (n_layers - 1):
-                self.model.add(LSTM(self.hidden, input_shape=self.input_shape, return_sequences=True))
-            else:
-                self.model.add(LSTM(self.hidden, input_shape=self.input_shape, return_sequences=True))
-                self.model.add(TimeDistributed(Dense(64)))
-                self.model.add(TimeDistributed(Dense(32)))
-                self.model.add(TimeDistributed(Dense(1)))
-            if layer != 0:
-                self.model.add(Dropout(self.drop_out))
-        self.model.compile(loss='mse', optimizer='adam', metrics=['mse', 'mae'])
-
-    def deep_rnn_io_model_construction(self, n_layers=3):
-        self.model = Sequential()
-        for layer in range(n_layers):
-
-            if layer != (n_layers - 1):
-                self.model.add(LSTM(self.hidden, input_shape=self.input_shape, return_sequences=True))
-            else:
-                self.model.add(LSTM(self.hidden, input_shape=self.input_shape, return_sequences=False))
-                self.model.add(Dense(1))
-
-            if layer != 0:
-                self.model.add(Dropout(self.drop_out))
-
-    def bidirectional_model_construction(self, input_shape, drop_out=0.3):
-        self.model = Sequential()
-        self.model.add(
-            Bidirectional(LSTM(self.hidden, return_sequences=True), input_shape=input_shape))
-        self.model.add(Dropout(drop_out))
-        self.model.add(TimeDistributed(Dense(1)))
 
     def plot_models(self):
         plot_model(model=self.model, to_file=self.saving_path + '/model.png', show_shapes=True)

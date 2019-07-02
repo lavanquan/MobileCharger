@@ -63,7 +63,7 @@ if __name__ == "__main__":
                                      data_period=Config.ENERGY_SEND_PERIOD * 2,
                                      model_saving_path=Config.MODEL_SAVING_PATH + 'lstm-test/')
 
-    lstm_predictor.fit(train_data)
+    # lstm_predictor.fit(train_data)
     mae, r2 = lstm_predictor.test(test_data)
 
     print 'MAE: {} --- R2: {}'.format(mae, r2)
