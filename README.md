@@ -9,13 +9,13 @@ Thu vien dung de giai quyet bai toan MILP la Pulp
 
 In order to predict the energy used  in the next period:
 
-step1: load model by load_model function in energy_predict/commons/energy_predictor.py
+step1: load model by load_model function in energy_predict/energy_predictor.py
 
         + input includes: 1. path to model(leave it default)
         
                           2.gpu device: (leave it default
                           
-step2: predict by predict function in energy_predict/commons/energy_predictor.py
+step2: predict by predict function in energy_predict/energy_predictor.py
 
         + input includes: 1. model loads from step 1
         
