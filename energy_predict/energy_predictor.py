@@ -27,7 +27,7 @@ METRICS = ['mse']
 EPOCH = 100
 current_dir = os.path.dirname(os.path.abspath(__file__))
 PATH_STATE = os.path.join(current_dir, "train_model")
-MODEL_PATH = os.path.join(PATH_STATE, "seqlstmnogroundmse_128_5000_200_120_40.hdf5")
+MODEL_PATH = os.path.join(PATH_STATE, "seqlstmnogroundmse_256_10000_200_24_8.hdf5")
 
 CONSTB_NAME = "_best_model.hdf5"
 PATH_OUTPUT = "output"
@@ -50,15 +50,20 @@ def load_model(model_path: str = MODEL_PATH, device: str = "0"):
     return model
 
 
-def predict(model, data):
+def predict(model, data, avg=4):
     """
     predict the average value of the next charging cycle
-    data is defined as (number of sensors, number of steps). Ex: (1000, 120)
+    data is defined as (number of sensors, number of steps). Ex: (121, 1000)
     :param model: load from the load_model function
-    :param data: average energy consumption of each step. type numpy.ndarray((1000, 120))
+    :param data: energy left of each step. type numpy.ndarray((121, 1000))
+    :param avg: average time step per blocks
+    :param nodes: number of nodes
+    :param time_steps: number of time steps for inputting at a time
     :return:
     """
-    x_test = np.expand_dims(data, axis=2)
+    x_test = calculated_energy_used(data, avg=avg)
+    x_test = np.transpose(x_test)
+    x_test = np.expand_dims(x_test, axis=2)
     y_predict = model.predict(x_test, verbose=0, batch_size=BATCH_SIZE)
     return np.mean(y_predict, axis=1)
 
