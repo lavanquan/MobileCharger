@@ -50,7 +50,7 @@ def load_model(model_path: str = MODEL_PATH, device: str = "0"):
     return model
 
 
-def predict(model, data, avg=4, nodes=1000, time_steps=120):
+def predict(model, data, avg=5, nodes=1000, time_steps=120):
     """
     predict the average value of the next charging cycle
     data is defined as (number of sensors, number of steps). Ex: (120, 1000)
