@@ -50,18 +50,24 @@ def load_model(model_path: str = MODEL_PATH, device: str = "0"):
     return model
 
 
-def predict(model, data, avg=4):
+def predict(model, data, avg=4, nodes=1000, time_steps=120):
     """
     predict the average value of the next charging cycle
-    data is defined as (number of sensors, number of steps). Ex: (121, 1000)
+    data is defined as (number of sensors, number of steps). Ex: (120, 1000)
     :param model: load from the load_model function
-    :param data: energy left of each step. type numpy.ndarray((121, 1000))
+    :param data: energy left of each step. type numpy.ndarray((120, 1000))
     :param avg: average time step per blocks
     :param nodes: number of nodes
     :param time_steps: number of time steps for inputting at a time
     :return:
     """
-    x_test = calculated_energy_used(data, avg=avg)
+    x_test = np.zeros([int(time_steps/avg), nodes], dtype=float)
+    set_point = 0
+    j = 0
+    for i in range(avg, time_steps, avg):
+        x_test[j] = np.mean(data[set_point:i])
+        set_point = i
+        j += 1
     x_test = np.transpose(x_test)
     x_test = np.expand_dims(x_test, axis=2)
     y_predict = model.predict(x_test, verbose=0, batch_size=BATCH_SIZE)
