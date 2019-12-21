@@ -48,11 +48,73 @@ class EstimateTimeGreedy:
         t = LpVariable.matrix("t", list(range(numNode)), 0, None, LpContinuous)
         for j, _ in enumerate(self.node_pos):
             model += lpSum([x[u] * (self.charge(self.node_pos[j], self.charge_pos[u]) - self.e[j]) for u, _ in
-                            enumerate(self.charge_pos)]) - gamma * (self.e[j] / sum(self.e)) + (
+                            enumerate(self.charge_pos)]) / lpSum(
+                [self.charge(self.node_pos[j], self.charge_pos[u]) - self.e[j] for u, _ in
+                 enumerate(self.charge_pos)]) - gamma * (self.e[j] / sum(self.e)) + (
                              1 - gamma) * (self.E[j] / sum(self.E)) <= t[j]
             model += lpSum([x[u] * (self.charge(self.node_pos[j], self.charge_pos[u]) - self.e[j]) for u, _ in
-                            enumerate(self.charge_pos)]) - gamma * (self.e[j] / sum(self.e)) + (
+                            enumerate(self.charge_pos)]) / lpSum(
+                [self.charge(self.node_pos[j], self.charge_pos[u]) - self.e[j] for u, _ in
+                 enumerate(self.charge_pos)]) - gamma * (self.e[j] / sum(self.e)) + (
                              1 - gamma) * (self.E[j] / sum(self.E)) >= -t[j]
+        model += lpSum(t)
+        status = model.solve()
+        if status == 1:
+            valueX = [value(item) for item in x]
+            if sum(valueX):
+                w = [item / sum(valueX) for item in valueX]
+            else:
+                w = [1.0 / len(self.charge_pos) for _ in self.charge_pos]
+            return w
+        else:
+            print "LP can not solve"
+            return -1
+
+    def getWeight2(self, gamma):
+        numNode = len(self.node_pos)
+        numCharge = len(self.charge_pos)
+
+        model = LpProblem("Charge", LpMinimize)
+        x = LpVariable.matrix("x", list(range(numCharge)), 0, None, LpContinuous)
+        t = LpVariable.matrix("t", list(range(numNode)), 0, None, LpContinuous)
+        for j, _ in enumerate(self.node_pos):
+            model += lpSum([x[u] * (self.charge(self.node_pos[j], self.charge_pos[u]) - self.e[j]) for u, _ in
+                            enumerate(self.charge_pos)]) / lpSum(
+                [self.charge(self.node_pos[j], self.charge_pos[u]) - self.e[j] for u, _ in
+                 enumerate(self.charge_pos)]) + (self.E[j] / sum(self.E)) <= t[j]
+            model += lpSum([x[u] * (self.charge(self.node_pos[j], self.charge_pos[u]) - self.e[j]) for u, _ in
+                            enumerate(self.charge_pos)]) / lpSum(
+                [self.charge(self.node_pos[j], self.charge_pos[u]) - self.e[j] for u, _ in
+                 enumerate(self.charge_pos)]) + (self.E[j] / sum(self.E)) >= -t[j]
+        model += lpSum(t)
+        status = model.solve()
+        if status == 1:
+            valueX = [value(item) for item in x]
+            if sum(valueX):
+                w = [item / sum(valueX) for item in valueX]
+            else:
+                w = [1.0 / len(self.charge_pos) for _ in self.charge_pos]
+            return w
+        else:
+            print "LP can not solve"
+            return -1
+
+    def getWeight3(self, gamma):
+        numNode = len(self.node_pos)
+        numCharge = len(self.charge_pos)
+
+        model = LpProblem("Charge", LpMinimize)
+        x = LpVariable.matrix("x", list(range(numCharge)), 0, None, LpContinuous)
+        t = LpVariable.matrix("t", list(range(numNode)), 0, None, LpContinuous)
+        for j, _ in enumerate(self.node_pos):
+            model += lpSum([x[u] * (self.charge(self.node_pos[j], self.charge_pos[u]) - self.e[j]) for u, _ in
+                            enumerate(self.charge_pos)]) / lpSum(
+                [self.charge(self.node_pos[j], self.charge_pos[u]) - self.e[j] for u, _ in
+                 enumerate(self.charge_pos)]) - (self.e[j] / sum(self.e)) <= t[j]
+            model += lpSum([x[u] * (self.charge(self.node_pos[j], self.charge_pos[u]) - self.e[j]) for u, _ in
+                            enumerate(self.charge_pos)]) / lpSum(
+                [self.charge(self.node_pos[j], self.charge_pos[u]) - self.e[j] for u, _ in
+                 enumerate(self.charge_pos)]) - (self.e[j] / sum(self.e)) >= -t[j]
         model += lpSum(t)
         status = model.solve()
         if status == 1:
@@ -76,6 +138,9 @@ class EstimateTimeGreedy:
         maxP = max(
             sum(self.charge(self.node_pos[j], self.charge_pos[u]) for j, _ in enumerate(self.node_pos)) for u, _ in
             enumerate(self.charge_pos))
+        sumP = sum(
+            sum(self.charge(self.node_pos[j], self.charge_pos[u]) for j, _ in enumerate(self.node_pos)) for u, _ in
+            enumerate(self.charge_pos))
 
         model = LpProblem("getTime", LpMaximize)
 
@@ -85,7 +150,9 @@ class EstimateTimeGreedy:
         T_base = LpVariable("T_base", 0, None, LpContinuous)  # time minimum to charge
         T = LpVariable.matrix("T", list(range(numCharge)), 0, None, LpContinuous)  # time charge at each location
 
-        model += E_mc == self.E_mc + t_k * self.e_mc - self.e_move * sum(self.time_move)
+        model += E_mc + t_k * self.e_mc >= lpSum(self.time_move) * self.e_move + lpSum(
+            [self.E_sensor_max - self.E[j] for j, _ in enumerate(self.node_pos)])
+        model += E_mc == self.E_mc + t_k * self.e_mc - self.e_move * lpSum(self.time_move)
         model += T_base == E_mc / maxP
         for u, _ in enumerate(self.charge_pos):
             model += T[u] == T_base * w[u]
@@ -105,3 +172,66 @@ class EstimateTimeGreedy:
             return valueX, value(t_k)
         else:
             return -1
+
+    # def calculate(self, gamma):
+    #     w = self.getWeight(gamma=gamma)
+    #     E_lose = sum([self.E_sensor_max - self.E[j] for j, _ in enumerate(self.node_pos)])
+    #     print E_lose, sum(self.time_move) * self.e_move
+    #     if self.E_mc < E_lose + sum(self.time_move) * self.e_move < self.E_mc_max:
+    #         E_new = E_lose + sum(self.time_move) * self.e_move
+    #     elif self.E_mc >= E_lose + sum(self.time_move) * self.e_move:
+    #         E_new = self.E_mc
+    #     else:
+    #         E_new = self.E_mc_max
+    #     E_new = self.E_mc_max
+    #     t_k = (E_new - self.E_mc) / self.e_mc
+    #     t_base = (E_new - sum(self.time_move) * self.e_move) / (sum([sum([self.charge(node, charge) for j, node in enumerate(self.node_pos)]) * w[u] for u, charge in enumerate(self.charge_pos)]))
+    #     x = [w[u] * t_base for u, _ in enumerate(w)]
+    #     return x, t_k
+
+    # def calculate(self, gamma):
+    #     # numNode = len(self.node_pos)
+    #     numCharge = len(self.charge_pos)
+    #     w = self.getWeight3(gamma=gamma)
+    #     E_lose = sum([self.E_sensor_max - self.E[j] for j, _ in enumerate(self.node_pos)])
+    #     if self.E_mc < E_lose + sum(self.time_move) * self.e_move < self.E_mc_max:
+    #         E_new = E_lose + sum(self.time_move) * self.e_move
+    #     elif self.E_mc >= E_lose + sum(self.time_move) * self.e_move:
+    #         E_new = self.E_mc
+    #     else:
+    #         E_new = self.E_mc_max
+    #     t_k = (E_new - self.E_mc) / self.e_mc
+    #     if w == -1:
+    #         return -1
+    #
+    #     maxP = max(
+    #         sum(self.charge(self.node_pos[j], self.charge_pos[u]) for j, _ in enumerate(self.node_pos)) for u, _ in
+    #         enumerate(self.charge_pos))
+    #     sumP = sum(
+    #         sum(self.charge(self.node_pos[j], self.charge_pos[u]) for j, _ in enumerate(self.node_pos)) for u, _ in
+    #         enumerate(self.charge_pos))
+    #
+    #     model = LpProblem("getTime", LpMaximize)
+    #
+    #     x = LpVariable("x", 0, None, LpContinuous)  # energy
+    #     T_base = LpVariable("T_base", 0, None, LpContinuous)  # time minimum to charge
+    #     T = LpVariable.matrix("T", list(range(numCharge)), 0, None, LpContinuous)  # time charge at each location
+    #
+    #     for u, _ in enumerate(self.charge_pos):
+    #         model += T[u] == T_base * w[u]
+    #     for j, _ in enumerate(self.node_pos):
+    #         model += x <= self.E[j] - t_k * self.e[j] - self.time_move[0] * self.e[j]
+    #         for u, _ in enumerate(self.charge_pos):
+    #             model += x <= self.E[j] - t_k * self.e[j] + lpSum(
+    #                 (self.charge(self.node_pos[j], self.charge_pos[i]) - self.e[j]) * T[i] for i in range(u)) - lpSum(
+    #                 self.time_move[i] + T[i] for i in range(u)) * self.e[j] - self.time_move[u + 1] * self.e[j]
+    #
+    #     model += x
+    #
+    #     status = model.solve()
+    #
+    #     if status == 1:
+    #         valueX = [value(item) for item in T]
+    #         return valueX, t_k
+    #     else:
+    #         return -1

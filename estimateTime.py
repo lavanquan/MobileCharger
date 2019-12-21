@@ -92,7 +92,7 @@ class EstimateTime:
         numNode = len(self.node_pos)
         numCharge = len(self.charge_pos)
         E_move = sum(self.time_move) * self.e_move
-        print sum(self.time_move)
+        # print sum(self.time_move)
         # print E_move
         # variable
         x = LpVariable.matrix("x", list(range(numCharge)), 0, None, LpContinuous)

@@ -40,6 +40,7 @@ class NetworkSimulator:
         self.velocity = df.velocity[index]  # van toc mobile charger
 
         self.base = literal_eval(df.base[index])  # toa do cua base
+        self.depot = literal_eval(df.depot[index])  # depot of MC
 
         self.ER = df.ER[index]  # pra tinh nang luong truyen thong
         self.ET = df.ET[index]  # pra tinh nang luong truyen thong
@@ -182,34 +183,54 @@ class NetworkSimulator:
     # timeStart: thoi diem bat dau hanh trinh cua mobile charger
     # chare_time: danh sach thoi gian dung chan cua mobile charger
     # time_move: thoi gian mobile charger di chuyen qua cac diem dung chan
-    def chargePerSec(self, t, timeStart, charge_time, time_move):
+    # def chargePerSec(self, t, timeStart, charge_time, time_move):
+    #     index = -1
+    #     for i in range(len(charge_time)):
+    #         if timeStart + sum(time_move[:i + 1]) + sum(charge_time[:i]) < t <= timeStart + sum(
+    #                 time_move[:i + 1]) + sum(charge_time[:i + 1]):
+    #             index = i
+    #     if index != -1:
+    #         E_old = [node.energy for node in self.net.nodes()]
+    #         start = timeStart + sum(time_move[:index + 1]) + sum(charge_time[:index])
+    #         end = start + charge_time[index]
+    #         if t - start < 1:
+    #             for node in self.net.nodes():
+    #                 d = distance(self.net.pos[node], self.charge_pos[index])
+    #                 if d <= self.chargeRange:
+    #                     p = min(self.alpha / ((d + self.beta) ** 2) * (t - start), self.E_sensor_max - node.energy)
+    #                     node.energy += p
+    #         elif end - t < 1:
+    #             for node in self.net.nodes():
+    #                 d = distance(self.net.pos[node], self.charge_pos[index])
+    #                 if d <= self.chargeRange:
+    #                     p = min(self.alpha / ((d + self.beta) ** 2) * (end - t), self.E_sensor_max - node.energy)
+    #                     node.energy += p
+    #         else:
+    #             for node in self.net.nodes():
+    #                 d = distance(self.net.pos[node], self.charge_pos[index])
+    #                 if d <= self.chargeRange:
+    #                     p = min(self.alpha / ((d + self.beta) ** 2), self.E_sensor_max - node.energy)
+    #                     node.energy += p
+    #         E_new = [node.energy for node in self.net.nodes()]
+    #         # print (sum(E_new) - sum(E_old))
+    #         self.E_mc = self.E_mc - (sum(E_new) - sum(E_old))
+
+    def chargePerSec(self, t, timeStart, charge_pos_ignore_zero, charge_time_ignore_zero, time_move_ignore_zero):
         index = -1
-        for i in range(len(charge_time)):
-            if timeStart + sum(time_move[:i + 1]) + sum(charge_time[:i]) < t <= timeStart + sum(
-                    time_move[:i + 1]) + sum(charge_time[:i + 1]):
+        for i in range(len(charge_time_ignore_zero)):
+            if timeStart + sum(time_move_ignore_zero[:i + 1]) + sum(
+                    charge_time_ignore_zero[:i]) <= t <= timeStart + sum(time_move_ignore_zero[:i + 1]) + sum(
+                    charge_time_ignore_zero[:i + 1]):
                 index = i
         if index != -1:
+            # print "t = ", t, time_move_ignore_zero[index], self.charge_pos[index]
             E_old = [node.energy for node in self.net.nodes()]
-            start = timeStart + sum(time_move[:index + 1]) + sum(charge_time[:index])
-            end = start + charge_time[index]
-            if t - start < 1:
-                for node in self.net.nodes():
-                    d = distance(self.net.pos[node], self.charge_pos[index])
-                    if d <= self.chargeRange:
-                        p = min(self.alpha / ((d + self.beta) ** 2) * (t - start), self.E_sensor_max - node.energy)
-                        node.energy += p
-            elif end - t < 1:
-                for node in self.net.nodes():
-                    d = distance(self.net.pos[node], self.charge_pos[index])
-                    if d <= self.chargeRange:
-                        p = min(self.alpha / ((d + self.beta) ** 2) * (end - t), self.E_sensor_max - node.energy)
-                        node.energy += p
-            else:
-                for node in self.net.nodes():
-                    d = distance(self.net.pos[node], self.charge_pos[index])
-                    if d <= self.chargeRange:
-                        p = min(self.alpha / ((d + self.beta) ** 2), self.E_sensor_max - node.energy)
-                        node.energy += p
+            start = timeStart + sum(time_move_ignore_zero[:index + 1]) + sum(charge_time_ignore_zero[:index])
+            end = start + charge_time_ignore_zero[index]
+            for node in self.net.nodes():
+                d = distance(self.net.pos[node], self.charge_pos[charge_pos_ignore_zero[index]])
+                p = min(self.alpha / ((d + self.beta) ** 2), self.E_sensor_max - node.energy)
+                node.energy += p
             E_new = [node.energy for node in self.net.nodes()]
             # print (sum(E_new) - sum(E_old))
             self.E_mc = self.E_mc - (sum(E_new) - sum(E_old))
@@ -247,7 +268,7 @@ class NetworkSimulator:
 
     # ham thuc hien mo phong qua trinh mang thuc thi
     # file_name la ten file se log du lieu nang luong cua mang
-    def sim(self, file_name="log_file.csv", num_point=100):
+    def sim(self, file_name="log_file.csv", num_point=100, gamma=0.5):
         t = 1
         self.writeHeader(file_name)
 
@@ -260,12 +281,12 @@ class NetworkSimulator:
         # dis_charge_pos = sum([self.distance(self.charge_pos[i], self.charge_pos[i + 1]) \
         #                       for i in range(len(self.charge_pos) - 1)])
         # calculate time to move
-        charge_pos_extend = [(0, 0)]
+        charge_pos_extend = [self.depot]
         charge_pos_extend.extend(self.charge_pos)
-        charge_pos_extend.extend([(0, 0)])
+        charge_pos_extend.extend([self.depot])
         time_move = [distance(charge_pos_extend[i], charge_pos_extend[i + 1]) / self.velocity \
                      for i in range(len(charge_pos_extend) - 1)]
-        print self.e_move * sum(time_move)
+        # print self.e_move * sum(time_move)
         # list of average used energy
         list_energy = []
         # temp_e is used to save the used energy each delta second
@@ -273,7 +294,9 @@ class NetworkSimulator:
         charge_add74 = 0
         e74 = 0.0
         while t <= self.MaxTime:
-            # print t, min([node.energy for node in self.net.nodes()]), max([node.energy for node in self.net.nodes()])
+            if t % 100 == 0:
+                print t, min([node.energy for node in self.net.nodes()]), max(
+                    [node.energy for node in self.net.nodes()])
             # temp_e1 is used to save the used energy each second
             temp_e1 = self.communicateUniform(t, self.delta, freq=self.freq)
             if temp_e1 == -1:
@@ -288,38 +311,51 @@ class NetworkSimulator:
 
             if t == self.delta:
                 E, e = self.estimateEnergy(list_energy=list_energy, num_point=num_point)
-                e74 = e[74]
-                print e[74], E[74], self.E_mc, self.E_mc_max
+                print "E = ", round(min(E), 2), max(E), round(self.E_mc, 2), self.E_mc_max
                 estimate = EstimateTimeGreedy(E=E, e=e, E_sensor_max=self.E_sensor_max, E_mc=self.E_mc, e_mc=self.e_mc,
                                               e_move=self.e_move,
                                               E_mc_max=self.E_mc_max, node_pos=self.node_pos,
                                               charge_pos=self.charge_pos,
                                               time_move=time_move, chargeRange=self.chargeRange,
                                               alpha=self.alpha, beta=self.beta)
-                status = estimate.calculate(0.5)
+                status = estimate.calculate(gamma=gamma)
+                print status
                 if status == -1:
                     t = t + 1
                     continue
                 charge_time, T = status
                 self.E_mc = self.E_mc + T * self.e_mc
-                print T, charge_time
+                # print T, charge_time
 
+                if not charge_time:
+                    timeStop = t + 1
+                    t = t + 1
+                    continue
+                charge_pos_ignore_zero = [i for i, item in enumerate(charge_time) if item > 0]
+                charge_time_ignore_zero = [item for i, item in enumerate(charge_time) if item > 0]
+                time_move_ignore_zero = [
+                    distance(self.depot, self.charge_pos[charge_pos_ignore_zero[0]]) / self.velocity]
+                time_move_ignore_zero.extend([distance(self.charge_pos[charge_pos_ignore_zero[i - 1]],
+                                                       self.charge_pos[charge_pos_ignore_zero[i]]) / self.velocity for
+                                              i, _ in enumerate(charge_pos_ignore_zero) if i > 0])
+                time_move_ignore_zero.append(
+                    distance(self.depot, self.charge_pos[charge_pos_ignore_zero[-1]]) / self.velocity)
                 timeStart = timeStop + T
-                timeStop = timeStart + sum(time_move) + sum(charge_time)
+                timeStop = timeStart + sum(time_move_ignore_zero) + sum(charge_time_ignore_zero)
 
             if t == math.floor(timeStart):
                 flag = True
             elif t == math.floor(timeStop):
                 flag = False
                 E, e = self.estimateEnergy(list_energy=list_energy, num_point=num_point)
-                print min(e), max(e), min(E), max(E), self.E_mc, self.E_mc_max
+                print "E = ", round(min(E), 2), max(E), round(self.E_mc, 2), self.E_mc_max
                 estimate = EstimateTimeGreedy(E=E, e=e, E_sensor_max=self.E_sensor_max, E_mc=self.E_mc, e_mc=self.e_mc,
                                               e_move=self.e_move,
                                               E_mc_max=self.E_mc_max, node_pos=self.node_pos,
                                               charge_pos=self.charge_pos,
                                               time_move=time_move, chargeRange=self.chargeRange,
                                               alpha=self.alpha, beta=self.beta)
-                status = estimate.calculate(0.5)
+                status = estimate.calculate(gamma=gamma)
                 if status == -1:
                     t = t + 1
                     continue
@@ -327,21 +363,30 @@ class NetworkSimulator:
                 self.E_mc = self.E_mc + T * self.e_mc
                 print T, charge_time
 
+                if not any(charge_time):
+                    timeStop = t + 1
+                    t = t + 1
+                    continue
+                else:
+                    charge_pos_ignore_zero = [i for i, item in enumerate(charge_time) if item > 0]
+                    charge_time_ignore_zero = [item for i, item in enumerate(charge_time) if item > 0]
+                    time_move_ignore_zero = [
+                        distance(self.depot, self.charge_pos[charge_pos_ignore_zero[0]]) / self.velocity]
+                    time_move_ignore_zero.extend([distance(self.charge_pos[charge_pos_ignore_zero[i - 1]],
+                                                           self.charge_pos[charge_pos_ignore_zero[i]]) / self.velocity
+                                                  for
+                                                  i, _ in enumerate(charge_pos_ignore_zero) if i > 0])
+                    time_move_ignore_zero.append(
+                        distance(self.depot, self.charge_pos[charge_pos_ignore_zero[-1]]) / self.velocity)
+                print charge_time
+                print charge_time_ignore_zero
+                print time_move_ignore_zero
                 timeStart = timeStop + T + 1
-                timeStop = timeStart + sum(time_move) + sum(charge_time)
-            node74_old = self.net.nodes()[74].energy
+                timeStop = timeStart + sum(time_move_ignore_zero) + sum(charge_time_ignore_zero)
             if flag:
-                # if self.E_mc < sum(time_move) * self.e_move:
-                #     flag = False
-                self.chargePerSec(t, timeStart, charge_time, time_move)
-            # if t % self.delta == 0:
-            #     self.write(file_name)
-            node74_new = self.net.nodes()[74].energy
-            # print "t = ", t, self.getIndexMinNode(), round(min([node.energy for node in self.net.nodes()]), 3), round(
-            #     max([node.energy for node in self.net.nodes()]), 3)
-            charge_add74 += node74_new - node74_old
-            # if node74_new - node74_old > 0:
-            #     print "t = ", t, node74_new - node74_old
+                self.chargePerSec(t, timeStart, charge_pos_ignore_zero, charge_time_ignore_zero, time_move_ignore_zero)
+            if t % self.delta == 0:
+                self.write(file_name)
             t += 1
         print t
 
@@ -357,9 +402,14 @@ class NetworkSimulator:
             #             index = i
             #     print "min energy at ", index, min_e
             # print t, min([node.energy for node in self.net.nodes()]), max([node.energy for node in self.net.nodes()])
+            if t % 100 == 0:
+                print t, min([node.energy for node in self.net.nodes()]), max(
+                    [node.energy for node in self.net.nodes()])
             temp_e1 = self.communicateUniform(t, self.delta, freq=self.freq)
             if temp_e1 == -1:
                 break
+            if t % self.delta == 0:
+                self.write(file_name)
             t = t + 1
         print t
 
@@ -371,16 +421,19 @@ class NetworkSimulator:
         time_dead = [self.net.nodes()[index].energy / e[index] for index in list_request]
 
         near_charge = [self.getNearCharge(self.net.pos[sr]) for index, sr in enumerate(self.net.nodes())]
-        distance_charge = [distance(near_charge[i], self.net.pos[self.net.nodes()[i]]) for i, _ in enumerate(self.net.nodes())]
+        distance_charge = [distance(near_charge[i], self.net.pos[self.net.nodes()[i]]) for i, _ in
+                           enumerate(self.net.nodes())]
         time_charge = [
-            (self.E_sensor_max - self.net.nodes()[index].energy) / (self.alpha / ((distance_charge[index] + self.beta) ** 2) - e[index]) if
-            self.alpha / ((distance_charge[index] + self.beta) ** 2) - e[index] > 0 else 10 ** 10 for i, index in enumerate(list_request)]
+            (self.E_sensor_max - self.net.nodes()[index].energy) / (
+                        self.alpha / ((distance_charge[index] + self.beta) ** 2) - e[index]) if
+            self.alpha / ((distance_charge[index] + self.beta) ** 2) - e[index] > 0 else 10 ** 10 for i, index in
+            enumerate(list_request)]
         time_move = [distance(mc_location, self.net.pos[self.net.nodes()[index]]) / self.velocity for index in
                      list_request]
         time_charge_full = [time_move[i] + time_charge[i] for i, _ in enumerate(list_request)]
         candidate_list = [(index, time_charge_full[i]) for i, index in enumerate(list_request) if
                           time_charge_full[i] <= min(time_dead)]
-        min_x = 10 ** 10
+        min_x = float("inf")
         idNode = -1
         if candidate_list:
             for i, item in enumerate(candidate_list):
@@ -407,7 +460,7 @@ class NetworkSimulator:
     #     self.net.nodes()[idNode].energy = self.net.nodes()[idNode].energy + min(
     #         self.E_sensor_max - self.net.nodes()[idNode].energy, p)
 
-    def chargePerSecINMA(self, mc_location, t, timeStart, time_to_move):
+    def chargePerSecINMA(self, mc_location, t, timeStart, time_to_move, id_node):
         for index, nd in enumerate(self.net.nodes()):
             p = 0
             d = distance(self.net.pos[nd], mc_location)
@@ -417,11 +470,14 @@ class NetworkSimulator:
                 p = (self.alpha / (d + self.beta) ** 2)
             nd.energy = nd.energy + min(self.E_sensor_max - nd.energy, p)
             self.E_mc = self.E_mc - min(self.E_sensor_max - nd.energy, p)
-            # print mc_location
+        # p = self.alpha / (self.beta ** 2)
+        # self.net.nodes()[id_node].energy = self.net.nodes()[id_node].energy + min(self.E_sensor_max - self.net.nodes()[id_node].energy, p)
+        # self.E_mc = self.E_mc - min(self.E_sensor_max - self.net.nodes()[id_node].energy, p)
+        # print mc_location
 
     def getNearCharge(self, sr):
-        d_min = 10**10
-        near_loc = (0, 0)
+        d_min = 10 ** 10
+        near_loc = self.depot
         for loc_charge in self.charge_pos:
             d = distance(loc_charge, sr)
             if d < d_min:
@@ -431,23 +487,26 @@ class NetworkSimulator:
 
     def simINMA(self, file_name="log_file.csv", num_point=100, thread=0.8):
         t = 1
+        self.writeHeader(file_name)
         isFree = True  # isFree = true if MC is not working
         timeStart = 0.0
         timeStop = 0.0
         list_energy = []
         temp_e = [0.0 for _ in range(self.numNode)]
-        mc_location = (0.0, 0.0)
+        mc_location = self.depot
 
         # calculate time to move
-        charge_pos_extend = [(0, 0)]
+        charge_pos_extend = [self.depot]
         charge_pos_extend.extend(self.charge_pos)
-        charge_pos_extend.extend([(0, 0)])
-        time_move = [distance(charge_pos_extend[i], charge_pos_extend[i + 1]) / self.velocity for i in range(len(charge_pos_extend) - 1)]
+        charge_pos_extend.extend([self.depot])
+        time_move = [distance(charge_pos_extend[i], charge_pos_extend[i + 1]) / self.velocity for i in
+                     range(len(charge_pos_extend) - 1)]
         E_move = sum(time_move) * self.e_move
+        idNode = 0
         while t <= self.MaxTime:
             # get log energy to estimate e and E
             if t % 100 == 0:
-                print t, min([node.energy for node in self.net.nodes()]), max([node.energy for node in self.net.nodes()])
+                print t, "min =", round(min([node.energy for node in self.net.nodes()]), 2), idNode, "=", round(self.net.nodes()[idNode].energy, 2)
             # temp_e1 is used to save the used energy each second
             temp_e1 = self.communicateUniform(t, self.delta, freq=self.freq)
             if temp_e1 == -1:
@@ -459,7 +518,8 @@ class NetworkSimulator:
                 temp_list_energy = [(temp_e[index] / self.delta, t) for index in range(self.numNode)]
                 temp_e = [0.0 for _ in range(self.numNode)]
                 list_energy.append(temp_list_energy)
-
+            if t % self.delta == 0:
+                self.write(file_name)
             # if t < delta, mc does not have energy information to estimate
             if t < self.delta:
                 t = t + 1
@@ -478,22 +538,24 @@ class NetworkSimulator:
                     continue
                 idNode, time_to_move, time_to_charge = check
                 print idNode, time_to_move, time_to_charge
+                # mc_location = self.getNearCharge(self.net.pos[self.net.nodes()[idNode]])
                 mc_location = self.getNearCharge(self.net.pos[self.net.nodes()[idNode]])
+                self.E_mc = self.E_mc - time_to_move * self.e_move
                 isFree = False
                 timeStart = t + 1
                 # timeStop = timeStart + time_to_move + time_to_charge
 
             if not isFree:  # flag = true: MC in charging time
-                self.chargePerSecINMA(mc_location, t, timeStart=timeStart, time_to_move=time_to_move)
+                self.chargePerSecINMA(mc_location, t, timeStart=timeStart, time_to_move=time_to_move, id_node=idNode)
                 # print idNode, self.net.nodes()[idNode].energy
-            if self.net.nodes()[idNode].energy >= self.E_sensor_max - 10**-3:
+            if self.net.nodes()[idNode].energy >= self.E_sensor_max - 10 ** -3:
                 isFree = True
             if self.E_mc < E_move:
-                d = distance(mc_location, (0.0, 0.0))
+                d = distance(mc_location, self.depot)
                 self.E_mc = self.E_mc - d / self.velocity * self.e_move
                 time = (self.E_mc_max - self.E_mc) / self.e_mc + d / self.velocity
                 self.E_mc = self.E_mc_max
-                mc_location = (0.0, 0.0)
+                mc_location = self.depot
                 timeStop = t + time
-
             t = t + 1
+        print t
